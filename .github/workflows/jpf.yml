@@ -18,7 +18,6 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '11'
-        cache: maven
 
     - name: Build project with JDK 11
       run: ./gradlew clean build -x test
