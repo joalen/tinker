@@ -25,7 +25,7 @@ jobs:
 
     - name: Build project with JDK 11
       if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-      run: ./gradlew clean build -x test
+      run: ./gradlew clean build -x test :tinker-build:tinker-patch-lib:compileJava
 
     - name: Build project with JDK 11
       if: ${{ runner.os == 'Windows' }}
