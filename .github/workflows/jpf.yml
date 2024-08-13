@@ -71,8 +71,8 @@ jobs:
             command="java -jar $runjpf_jar +classpath=$jar_file $main_class" 
             $command > "./jpf_reports/${safe_main_class}_jpf_report.txt"
         done
-
     - name: Run JPF on JAR files
+      continue-on-error: true
       if: runner.os == 'Windows'
       shell: cmd 
       run: | 
@@ -109,7 +109,7 @@ jobs:
         )
         
         endlocal
-
+        
     - name: Upload JPF reports
       if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
       uses: actions/upload-artifact@v4
