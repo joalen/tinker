@@ -71,6 +71,8 @@ jobs:
             command="java -jar $runjpf_jar +classpath=$jar_file $main_class" 
             $command > "./jpf_reports/${safe_main_class}_jpf_report.txt"
         done
+        grep -rl "\[SEVERE\] cannot load application class" jpf_reports/ | xargs rm -f
+        
     - name: Run JPF on JAR files
       continue-on-error: true
       if: runner.os == 'Windows'
