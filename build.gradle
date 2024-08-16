@@ -8,9 +8,16 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:4.2.0'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
+        classpath('com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6') {
+            exclude group: 'org.codehaus.groovy.modules.http-builder', module: 'http-builder'
+        }
         classpath "com.github.jengelman.gradle.plugins:shadow:4.0.4"
     }
+}
+
+plugins { 
+    id 'java'
+    id 'jacoco'
 }
 
 allprojects {
@@ -19,12 +26,42 @@ allprojects {
         mavenCentral()
         google()
         jcenter()
+        maven {
+            url "https://repository.liferay.com/nexus/content/repositories/public/" 
+        }
+    }
+
+    configurations.all {
+        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'org.codehaus.groovy.modules.http-builder' &&
+                details.requested.name == 'http-builder' &&
+                details.requested.version == '0.7.2') {
+                details.useVersion '0.7.1'
+            }
+        }
     }
 
     tasks.withType(Javadoc).all {
         enabled = false
         options.setEncoding('UTF-8')
     }
+
+    tasks.withType(Test) {
+        testLogging {
+            events = ["failed", "skipped", "passed"]
+            exceptionFormat = "full"
+        }
+    }
+
+    tasks.withType(JacocoReport) {
+        dependsOn(tasks.test)
+        reports {
+            xml.enabled true
+            html.enabled true
+            html.destination = file("${buildDir}/reports/jacoco")
+        }
+    }
+
 }
 
 ext {
