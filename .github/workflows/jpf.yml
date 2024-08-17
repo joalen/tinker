@@ -4,69 +4,6 @@ on:
   push:
 
 jobs:
-  run-jpf-selfhosted:
-    name: self-hosted-ubuntu22.04
-    runs-on: [self-hosted, linux, X64]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        repository: joalen/tinker
-
-    - name: Set up JDK 11 for JPF and project
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '11'
-        
-    - name: Build project with JDK 11
-      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-      run: ./gradlew clean build -x test :tinker-build:tinker-patch-lib:compileJava
-
-    - name: Clone and build jpf-core
-      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-      run: |
-        git clone https://github.com/javapathfinder/jpf-core.git /tmp/jpf-core
-        cd /tmp/jpf-core && git checkout 0916082fac91405e11ec7ce55f9068ce84d61aaa
-        ./gradlew buildJars
-
-    - name: Run JPF on JAR files
-      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-      shell: bash
-      run: |
-        #!/bin/bash
-        set +e 
-        mkdir -p jpf_reports
-        directory=$(pwd)
-        runjpf_jar="/tmp/jpf-core/build/RunJPF.jar"
-        jar_files=$(find "$directory" -type f -name "*.jar")
-        for jar_file in $jar_files; do
-            if ! unzip -l "$jar_file" 2>/dev/null | grep -q "META-INF/MANIFEST.MF"; then
-                continue
-            fi
-            main_class=$(unzip -p "$jar_file" META-INF/MANIFEST.MF | grep -i 'Main-Class' | awk -F': ' '{print $2}' | tr -d '\r')
-            if [ -z "$main_class" ]; then
-                continue
-            fi
-            
-            if echo "$main_class" | grep -Eiq 'org\.springframework|io\.quarkus'; then
-                continue
-            fi
-            safe_main_class=$(echo "$main_class" | tr -d '\r' | tr -d '\n' | sed 's/[\/:*?"<>|]/_/g')
-            command="java -jar $runjpf_jar +classpath=$jar_file $main_class" 
-            $command > "./jpf_reports/${safe_main_class}_jpf_report.txt"
-        done
-        grep -rl "\[SEVERE\] cannot load application class" jpf_reports/ | xargs rm -f
-        rm -r /tmp/jpf-core
-
-    - name: Upload JPF reports
-      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: jpf-report-${{ github.event.repository.name}}-on-${{ matrix.os }}-from_branch_${{ github.ref_name }}
-        path: './jpf_reports/*'
-        
   run-jpf:
     name: '${{ matrix.os }}'
     runs-on: ${{ matrix.os }}
@@ -188,3 +125,66 @@ jobs:
       with:
         name: jpf-report-${{ github.event.repository.name }}-on-${{ matrix.os }}-from_branch_${{ github.ref_name }}
         path: 'jpf_reports'
+
+  run-jpf-selfhosted:
+    name: self-hosted-ubuntu22.04
+    runs-on: [self-hosted, linux, X64]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: joalen/tinker
+
+    - name: Set up JDK 11 for JPF and project
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+        
+    - name: Build project with JDK 11
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+      run: ./gradlew clean build -x test :tinker-build:tinker-patch-lib:compileJava
+
+    - name: Clone and build jpf-core
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+      run: |
+        git clone https://github.com/javapathfinder/jpf-core.git /tmp/jpf-core
+        cd /tmp/jpf-core && git checkout 0916082fac91405e11ec7ce55f9068ce84d61aaa
+        ./gradlew buildJars
+
+    - name: Run JPF on JAR files
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        #!/bin/bash
+        set +e 
+        mkdir -p jpf_reports
+        directory=$(pwd)
+        runjpf_jar="/tmp/jpf-core/build/RunJPF.jar"
+        jar_files=$(find "$directory" -type f -name "*.jar")
+        for jar_file in $jar_files; do
+            if ! unzip -l "$jar_file" 2>/dev/null | grep -q "META-INF/MANIFEST.MF"; then
+                continue
+            fi
+            main_class=$(unzip -p "$jar_file" META-INF/MANIFEST.MF | grep -i 'Main-Class' | awk -F': ' '{print $2}' | tr -d '\r')
+            if [ -z "$main_class" ]; then
+                continue
+            fi
+            
+            if echo "$main_class" | grep -Eiq 'org\.springframework|io\.quarkus'; then
+                continue
+            fi
+            safe_main_class=$(echo "$main_class" | tr -d '\r' | tr -d '\n' | sed 's/[\/:*?"<>|]/_/g')
+            command="java -jar $runjpf_jar +classpath=$jar_file $main_class" 
+            $command > "./jpf_reports/${safe_main_class}_jpf_report.txt"
+        done
+        grep -rl "\[SEVERE\] cannot load application class" jpf_reports/ | xargs rm -f
+        rm -r /tmp/jpf-core
+
+    - name: Upload JPF reports
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: jpf-report-${{ github.event.repository.name}}-on-${{ matrix.os }}-from_branch_${{ github.ref_name }}
+        path: './jpf_reports/*'
